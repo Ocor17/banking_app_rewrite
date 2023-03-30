@@ -1,0 +1,13 @@
+[package]
+name = "banking_app_rewrite"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+argon2 = "0.5.0"
+csv = "1.1"
+password-hash = "0.5.0"
+rand = "0.8.5"
+serde = "1.0.158"
