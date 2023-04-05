@@ -1,5 +1,6 @@
-use crate::account::Account;
-use crate::person::Person;
+use crate::account::{Account, self};
+use crate::{checking, savings, credit};
+use crate::person::{Person, self};
 use argon2::{self, Argon2};
 use csv;
 use csv::ReaderBuilder;
@@ -8,6 +9,7 @@ use rand::thread_rng;
 //use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::fs::File;
+use std::io;
 //use std::io::prelude::*;
 use std::path::Path;
 
@@ -58,7 +60,7 @@ impl Customer {
     }
 
     fn password_hashing(password: String) -> String {
-        //use of thread_rng should be checked.
+        //use of thread_rng should be checked if this is the best way to get a rand for this implementation.
         let salt = SaltString::generate(&mut thread_rng());
         let argon2 = Argon2::default();
         let new_password = argon2
@@ -68,21 +70,53 @@ impl Customer {
         new_password
     }
 
-    pub fn csv_to_arr() -> Result<(), Box<dyn Error>> {
-        let path = Path::new("Bank4.csv");
+    //currently takes some time to run this function, most likely due to how argon2 works
+    pub fn csv_to_customer_arr() -> Result<Vec<Customer>, Box<dyn Error>> {
+        let mut input = String::new();
+        println!("Input csv filename:");
+        io::stdin().read_line(&mut input)?;
+
+        let path = Path::new(input.trim());
+
         let file = File::open(path)?;
+
+        //expected headers:
+        //Savings Account Number[0],Last Name[1],Identification Number[2],
+        //Date of Birth[3],Checking Account Number[4],Credit Account Number[5],
+        //Phone Number[6],Checking Starting Balance[7],Savings Starting Balance[8],
+        //Password[9],Credit Starting Balance[10],Address[11],First Name[12],Email[13],Credit Max[14]
 
         let mut reader = ReaderBuilder::new()
             .has_headers(true)
             .delimiter(b',')
             .from_reader(file);
 
+        let mut customer_arr = Vec::new();
+
+        //section must be double checked with the original Java code.
+        //issue with account num for account and Customer since it exists as id num in person
+        //starting balance is passed as none since balance checks for a starting balance and creates one if one does not exis
+
         for result in reader.records() {
             let record = result?;
-            println!("{:?}", record);
+
+            let person = person::Person::new(record[12].to_string(), record[1].to_string(), record[3].to_string(),
+             record[2].parse().unwrap(), record[11].to_string(), record[6].to_string(), record[13].to_string());
+            let checking = checking::Checking::new(record[4].parse().unwrap(),None , record[7].parse().unwrap());
+            let savings = savings::Savings::new(record[0].parse().unwrap(), None, record[8].parse().unwrap());
+            let credit = credit::Credit::new(record[5].parse().unwrap(), record[14].parse().unwrap(), None, record[10].parse().unwrap());
+            let account = account::Account::new(record[2].parse().unwrap(), Some(checking), Some(savings), Some(credit));
+            let customer = Customer::new(person, account, record[2].parse().unwrap(), record[9].to_string());
+            
+            println!("Creating customer: {} {}...",&record[12],&record[1]);
+
+            customer_arr.push(customer);
+            //let record = result?;
+            //println!("{:?}", record);
         }
         println!("{:?}", reader.headers().unwrap());
-        Ok(())
+        println!("Finish Read");
+        Ok(customer_arr)
     }
 
     pub fn print_all_fields(&mut self) {

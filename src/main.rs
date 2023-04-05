@@ -4,10 +4,6 @@ mod credit;
 pub mod customer;
 pub mod person;
 mod savings;
-//use argon2;
-//use csv;
-//use password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString};
-//use std::io::{self, BufRead};
 //use std::panic;
 
 fn main() {
@@ -25,8 +21,8 @@ fn main() {
     mary.set_first_name("first_name".to_string());
 
     let bob_checking = checking::Checking::new(1, Some(20.0), 500.00);
-    let bob_saving = savings::Savings::new(1, 20.0, 500.00);
-    let bob_credit = credit::Credit::new(1, 2, 20.0, 100.00, 500.00);
+    let bob_saving = savings::Savings::new(1, Some(20.0), 500.00);
+    let bob_credit = credit::Credit::new( 2, 20.0, Some(100.00), 500.00);
     let bob = account::Account::new(100, Some(bob_checking), Some(bob_saving), Some(bob_credit));
     //let test_acct  = account::Account::new(10, None, None, None);
 
@@ -71,7 +67,22 @@ fn main() {
         bob_customer.password()
     );
 
-    //customer::Customer::csv_to_arr();
-    bob_customer.print_all_fields();
-    bob_customer.print_all_balances();
+
+
+    let csv_customers = customer::Customer::csv_to_customer_arr();
+
+    match csv_customers{
+        Ok(value) => {
+            for mut customer in value{
+                customer.print_all_fields();
+            }
+        }
+        Err(error) => println!("{:?}", error),
+        
+    }
+
+
+
+    //bob_customer.print_all_fields();
+    //bob_customer.print_all_balances();
 }

@@ -1,11 +1,11 @@
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Savings {
     account_num: i64,
-    starting_balance: f32,
+    starting_balance: Option<f32>,
     balance: f32,
 }
 impl Savings {
-    pub fn new(account_num: i64, starting_balance: f32, balance: f32) -> Self {
+    pub fn new(account_num: i64, starting_balance: Option<f32>, balance: f32) -> Self {
         Savings {
             account_num: account_num,
             starting_balance: starting_balance,
@@ -21,11 +21,15 @@ impl Savings {
         self.account_num = account_num
     }
 
-    pub fn starting_balance(&self) -> f32 {
+    pub fn starting_balance(&self) -> Option<f32> {
         self.starting_balance
     }
+
+    //we're making the choice to not have a starting balance be overwritable
     pub fn set_starting_balance(&mut self, starting_balance: f32) {
-        self.starting_balance = starting_balance
+        if self.starting_balance == None {
+            self.starting_balance = Some(starting_balance);
+        }
     }
     pub fn balance(&self) -> f32 {
         self.balance
