@@ -7,9 +7,12 @@ pub struct Checking {
 
 impl Checking {
     pub fn new(account_num: i64, starting_balance: Option<f32>, balance: f32) -> Self {
+        
+        let starting_balance = starting_balance.unwrap_or(balance);
+        
         Checking {
             account_num: account_num,
-            starting_balance: starting_balance,
+            starting_balance: Some(starting_balance),
             balance: balance,
         }
     }

@@ -6,9 +6,11 @@ pub struct Savings {
 }
 impl Savings {
     pub fn new(account_num: i64, starting_balance: Option<f32>, balance: f32) -> Self {
+        let starting_balance = starting_balance.unwrap_or(balance);
+
         Savings {
             account_num: account_num,
-            starting_balance: starting_balance,
+            starting_balance: Some(starting_balance),
             balance: balance,
         }
     }

@@ -12,11 +12,13 @@ impl Credit {
         starting_balance: Option<f32>,
         balance: f32,
     ) -> Self {
+        let starting_balance = starting_balance.unwrap_or(balance);
+
         Credit {
 
             account_num: account_num,
             max_credit: max_credit,
-            starting_balance: starting_balance,
+            starting_balance: Some(starting_balance),
             balance: balance,
         }
     }

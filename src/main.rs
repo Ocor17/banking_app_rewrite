@@ -71,6 +71,9 @@ fn main() {
 
     let csv_customers = customer::Customer::csv_to_customer_arr();
 
+    customer::Customer::create_new_customer(csv_customers.unwrap());
+
+/* 
     match csv_customers{
         Ok(value) => {
             for mut customer in value{
@@ -80,6 +83,7 @@ fn main() {
         Err(error) => println!("{:?}", error),
         
     }
+*/
 
 
 

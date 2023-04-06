@@ -47,7 +47,7 @@ impl Account {
         match &mut self.checking {
             Some(_checking) => &mut self.checking,
             None => {
-                println!("No Checking Account error");
+                //println!("No Checking Account error");
                 &mut self.checking
             }
         }
@@ -60,7 +60,7 @@ impl Account {
         match &mut self.savings {
             Some(_saving) => &mut self.savings,
             None => {
-                println!("No Savings Account error");
+                //println!("No Savings Account error");
                 &mut self.savings
             }
         }
@@ -72,7 +72,7 @@ impl Account {
         match &mut self.credit {
             Some(_credit) => &mut self.credit,
             None => {
-                println!("No Creidt Account error");
+                //println!("No Creidt Account error");
                 &mut self.credit
             }
         }
