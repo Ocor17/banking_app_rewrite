@@ -4,10 +4,15 @@ mod credit;
 pub mod customer;
 pub mod person;
 mod savings;
+pub mod main_menu;
+pub mod bank_statement;
+
 //use std::panic;
 
 fn main() {
     println!("Hello, world!");
+
+    let mut test_customers:Vec<customer::Customer> = vec![];
 
     let mut mary = person::Person::new(
         "Mary".to_string(),
@@ -67,23 +72,29 @@ fn main() {
         bob_customer.password()
     );
 
+    bob_customer.person().set_first_name("Bob".to_string());
+    bob_customer.person().set_last_name("Bob".to_string());
 
+    test_customers.push(bob_customer);
 
-    let csv_customers = customer::Customer::csv_to_customer_arr();
+    test_customers = main_menu::MainMenu::main_menu(test_customers);
 
-    customer::Customer::create_new_customer(csv_customers.unwrap());
-
-/* 
-    match csv_customers{
-        Ok(value) => {
-            for mut customer in value{
-                customer.print_all_fields();
-            }
-        }
-        Err(error) => println!("{:?}", error),
-        
+    for mut i in test_customers{
+        i.print_all_fields();
     }
-*/
+
+    let mut csv_customers = customer::Customer::csv_to_customer_arr().unwrap();
+
+    customer::Customer::create_new_customer(&mut csv_customers);
+
+    let newest_cust = &mut csv_customers.last_mut();
+
+    newest_cust.as_mut().unwrap().print_all_balances();
+
+    for mut customer in csv_customers{
+        customer.print_all_fields();
+    };
+
 
 
 

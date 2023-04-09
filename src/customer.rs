@@ -60,7 +60,7 @@ impl Customer {
         self.customer_num = customer_num
     }
 
-    fn password_hashing(password: String) -> String {
+    pub fn password_hashing(password: String) -> String {
         //use of thread_rng should be checked if this is the best way to get a rand for this implementation.
         let salt = SaltString::generate(&mut thread_rng());
         let argon2 = Argon2::default();
@@ -125,7 +125,8 @@ impl Customer {
     }
 
     //function to be called to manually created a new customer
-    pub fn  create_new_customer(mut customer_arr: Vec<Customer>){
+    //need to add checks to ensure inital balance is not less than 0
+    pub fn  create_new_customer(customer_arr: &mut Vec<Customer>){
 
         let mut first_name = String::new();
         let mut last_name = String::new();
@@ -176,17 +177,30 @@ impl Customer {
 
         };
 
-        //add logic to enforce date format
-        print!("Date of birth mm/dd/yyyy: ");
-        io::stdout().flush().unwrap();
-        io::stdin().read_line(&mut date_of_birth).expect("could not read input");
-        date_of_birth = date_of_birth.trim().to_string();
+        //regex enforces mm/dd/yyyy format
+        let dob_regex = Regex::new(r#"^(0[1-9]|1[0-2])/(0[1-9]|[1-2][0-9]|3[0-1])/\d{4}$"#).unwrap();
+
+        date_of_birth = loop {
+            
         
+            print!("Date of birth mm/dd/yyyy: ");
+            io::stdout().flush().unwrap();
+            io::stdin().read_line(&mut date_of_birth).expect("could not read input");
+            date_of_birth = date_of_birth.trim().to_string();
+
+            if dob_regex.is_match(&date_of_birth){
+                break date_of_birth;
+            }
+            println!("date of birth format incorrect!");
+            
+        };
+
         print!("Address: ");
         io::stdout().flush().unwrap();
         io::stdin().read_line(&mut address).expect("could not read input");
         address = address.trim().to_string();
 
+        //regex enforces xxx-xxx-xxxx format
         let phone_number_regex = Regex::new(r"^(?:\d{3}-){2}\d{4}$|^\(\d{3}\)\s*\d{3}-\d{4}$").unwrap();
 
         phone_number = loop{
@@ -200,9 +214,8 @@ impl Customer {
 
             if phone_number_regex.is_match(&phone_number_in){
                 break phone_number_in;
-            } else{
-                println!("Phone number format incorrect, please enter number again.");
             }
+            println!("Phone number format incorrect, please enter number again.");
         };
 
         let email_regex = Regex::new(r"^([a-zA-Z0-9._%+-]+)@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})$").unwrap();
@@ -465,17 +478,29 @@ impl Customer {
     }
 
     pub fn print_all_balances(&mut self) {
+
+        println!("Printing all account balances...");
+
         println!(
             "Savings Account bal: ${}",
-            Self::account(self).savings().unwrap().balance()
+            match Self::account(self).savings(){
+                Some(active_savings) => active_savings.balance().to_string(),
+                None => "No account!".to_string(),
+            }
         );
         println!(
             "Checking Account bal: ${}",
-            Self::account(self).checking().unwrap().balance()
+            match Self::account(self).checking(){
+                Some(active_checking) => active_checking.balance().to_string(),
+                None => "No account!".to_string(),
+            }
         );
         println!(
             "Credit Account bal: ${}",
-            Self::account(self).credit().unwrap().balance()
+            match Self::account(self).credit(){
+                Some(active_credit) => active_credit.balance().to_string(),
+                None => "No account!".to_string(),
+            }
         );
     }
 }
