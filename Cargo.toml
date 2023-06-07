@@ -7,6 +7,8 @@ edition = "2021"
 
 [dependencies]
 argon2 = "0.5.0"
+cargo-watch = "8.4.0"
+chrono = "0.4.26"
 csv = "1.1"
 password-hash = "0.5.0"
 rand = "0.8.5"

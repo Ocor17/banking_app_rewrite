@@ -21,13 +21,13 @@ impl Person {
         email: String,
     ) -> Self {
         Person {
-            first_name: first_name,
-            last_name: last_name,
-            date_of_birth: date_of_birth,
-            identification_number: identification_number,
-            address: address,
-            phone_number: phone_number,
-            email: email,
+            first_name,
+            last_name,
+            date_of_birth,
+            identification_number,
+            address,
+            phone_number,
+            email,
         }
     }
 
@@ -37,8 +37,6 @@ impl Person {
 
     pub fn set_first_name(&mut self, first_name: String) {
         self.first_name = first_name;
-
-        //println!("{}",self.first_name);
     }
 
     pub fn last_name(&self) -> String {

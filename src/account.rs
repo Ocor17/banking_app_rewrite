@@ -20,11 +20,11 @@ impl Account {
         credit: Option<Credit>,
     ) -> Self {
         Account {
-            acct_num: acct_num,
+            acct_num,
             active: true,
-            checking: checking,
-            savings: savings,
-            credit: credit,
+            checking,
+            savings,
+            credit,
         }
     }
 

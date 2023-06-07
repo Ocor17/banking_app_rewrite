@@ -9,9 +9,9 @@ impl Savings {
         let starting_balance = starting_balance.unwrap_or(balance);
 
         Savings {
-            account_num: account_num,
+            account_num,
             starting_balance: Some(starting_balance),
-            balance: balance,
+            balance,
         }
     }
 
@@ -29,7 +29,7 @@ impl Savings {
 
     //we're making the choice to not have a starting balance be overwritable
     pub fn set_starting_balance(&mut self, starting_balance: f32) {
-        if self.starting_balance == None {
+        if self.starting_balance.is_none() {
             self.starting_balance = Some(starting_balance);
         }
     }

@@ -1,18 +1,18 @@
-use crate::account::{Account, self};
-use crate::{checking, savings, credit, customer};
-use crate::person::{Person, self};
-use argon2::{self, Argon2};
+use crate::account::{self, Account};
+use crate::person::{self, Person};
+use crate::{checking, credit, customer, savings};
+use argon2::{self, Argon2, PasswordHasher};
 use csv;
 use csv::ReaderBuilder;
-use password_hash::{PasswordHasher, SaltString};
+use password_hash::{PasswordHash, PasswordVerifier, SaltString};
 use rand::thread_rng;
 //use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::fs::File;
 use std::io::{self, Write};
 //use std::io::prelude::*;
-use std::path::Path;
 use regex::Regex;
+use std::path::Path;
 
 #[derive(Debug, Clone, Default)]
 //Move account num here and implement password
@@ -27,9 +27,9 @@ impl Customer {
     pub fn new(person: Person, account: Account, customer_num: i64, password: String) -> Self {
         let hashed_password = Self::password_hashing(password);
         Customer {
-            person: person,
-            account: account,
-            customer_num: customer_num,
+            person,
+            account,
+            customer_num,
             password: hashed_password,
         }
     }
@@ -68,7 +68,25 @@ impl Customer {
             .hash_password(password.as_bytes(), &salt)
             .unwrap()
             .to_string();
+
         new_password
+    }
+
+    pub fn password_verify(&self, password: &str) -> bool {
+        //let verfied_password = Argon2::default();
+
+        let binding = self.password();
+        let hash = PasswordHash::new(&binding).unwrap();
+
+        if Argon2::default()
+            .verify_password(password.as_bytes(), &hash)
+            .is_ok()
+        {
+            println!("VERIFIED");
+            return true;
+        }
+        println!("NOT VERIFIED");
+        false
     }
 
     //currently takes some time to run this function, most likely due to how argon2 works
@@ -101,15 +119,42 @@ impl Customer {
         for result in reader.records() {
             let record = result?;
 
-            let person = person::Person::new(record[12].to_string(), record[1].to_string(), record[3].to_string(),
-             record[2].parse().unwrap(), record[11].to_string(), record[6].to_string(), record[13].to_string());
-            let checking = checking::Checking::new(record[4].parse().unwrap(),None , record[7].parse().unwrap());
-            let savings = savings::Savings::new(record[0].parse().unwrap(), None, record[8].parse().unwrap());
-            let credit = credit::Credit::new(record[5].parse().unwrap(), record[14].parse().unwrap(), None, record[10].parse().unwrap());
-            let account = account::Account::new(record[2].parse().unwrap(), Some(checking), Some(savings), Some(credit));
-            let customer = Customer::new(person, account, record[2].parse().unwrap(), record[9].to_string());
-            
-            println!("Creating customer: {} {}...",&record[12],&record[1]);
+            let person = person::Person::new(
+                record[12].to_string(),
+                record[1].to_string(),
+                record[3].to_string(),
+                record[2].parse().unwrap(),
+                record[11].to_string(),
+                record[6].to_string(),
+                record[13].to_string(),
+            );
+            let checking = checking::Checking::new(
+                record[4].parse().unwrap(),
+                None,
+                record[7].parse().unwrap(),
+            );
+            let savings =
+                savings::Savings::new(record[0].parse().unwrap(), None, record[8].parse().unwrap());
+            let credit = credit::Credit::new(
+                record[5].parse().unwrap(),
+                record[14].parse().unwrap(),
+                None,
+                record[10].parse().unwrap(),
+            );
+            let account = account::Account::new(
+                record[2].parse().unwrap(),
+                Some(checking),
+                Some(savings),
+                Some(credit),
+            );
+            let customer = Customer::new(
+                person,
+                account,
+                record[2].parse().unwrap(),
+                record[9].to_string(),
+            );
+
+            println!("Creating customer: {} {}...", &record[12], &record[1]);
 
             customer_arr.push(customer);
             //let record = result?;
@@ -119,15 +164,18 @@ impl Customer {
         println!("Finish Read");
 
         //array gets sorted for future use of adding new accounts by incrementing the ID number
-        customer_arr.sort_by(|a,b| a.person.identification_number().cmp(&b.person.identification_number()));
+        customer_arr.sort_by(|a, b| {
+            a.person
+                .identification_number()
+                .cmp(&b.person.identification_number())
+        });
 
         Ok(customer_arr)
     }
 
     //function to be called to manually created a new customer
     //need to add checks to ensure inital balance is not less than 0
-    pub fn  create_new_customer(customer_arr: &mut Vec<Customer>){
-
+    pub fn create_new_customer(customer_arr: &mut Vec<Customer>) {
         let mut first_name = String::new();
         let mut last_name = String::new();
         let mut date_of_birth = String::new();
@@ -136,74 +184,86 @@ impl Customer {
         let mut password = String::new();
         let mut phone_number = String::new();
 
-        let mut new_checking:Option<checking::Checking> = None;
+        let mut new_checking: Option<checking::Checking> = None;
         let mut new_savings: Option<savings::Savings> = None;
         let mut new_credit: Option<credit::Credit> = None;
-        
-        let new_cust_id = customer_arr[customer_arr.len()-1].person.identification_number()+1;
+
+        let new_cust_id = customer_arr[customer_arr.len() - 1]
+            .person
+            .identification_number()
+            + 1;
 
         println!("Please include all fields");
         print!("First name: ");
         io::stdout().flush().unwrap();
-        io::stdin().read_line(&mut first_name).expect("could not read input");
+        io::stdin()
+            .read_line(&mut first_name)
+            .expect("could not read input");
         first_name = first_name.trim().to_string();
         //println!("{}",first_name);
 
         print!("Last Name: ");
         io::stdout().flush().unwrap();
-        io::stdin().read_line(&mut last_name).expect("could not read input");
+        io::stdin()
+            .read_line(&mut last_name)
+            .expect("could not read input");
         last_name = last_name.trim().to_string();
         //println!("{}",last_name);
 
-        password = loop{
-
+        password = loop {
             print!("Enter Password: ");
             io::stdout().flush().unwrap();
             let mut input = String::new();
-            io::stdin().read_line(&mut input).expect("could not read input");
+            io::stdin()
+                .read_line(&mut input)
+                .expect("could not read input");
 
             let mut confirm_input = String::new();
             print!("Enter password again: ");
             io::stdout().flush().unwrap();
-            io::stdin().read_line(&mut confirm_input).expect("could not read input");
+            io::stdin()
+                .read_line(&mut confirm_input)
+                .expect("could not read input");
 
             input = input.trim().to_string();
             confirm_input = confirm_input.trim().to_string();
 
-            if input == confirm_input{
+            if input == confirm_input {
                 break input;
             }
             println!("Passwords did not match. try again.");
-
         };
 
         //regex enforces mm/dd/yyyy format
-        let dob_regex = Regex::new(r#"^(0[1-9]|1[0-2])/(0[1-9]|[1-2][0-9]|3[0-1])/\d{4}$"#).unwrap();
+        let dob_regex =
+            Regex::new(r#"^(0[1-9]|1[0-2])/(0[1-9]|[1-2][0-9]|3[0-1])/\d{4}$"#).unwrap();
 
         date_of_birth = loop {
-            
-        
             print!("Date of birth mm/dd/yyyy: ");
             io::stdout().flush().unwrap();
-            io::stdin().read_line(&mut date_of_birth).expect("could not read input");
+            io::stdin()
+                .read_line(&mut date_of_birth)
+                .expect("could not read input");
             date_of_birth = date_of_birth.trim().to_string();
 
-            if dob_regex.is_match(&date_of_birth){
+            if dob_regex.is_match(&date_of_birth) {
                 break date_of_birth;
             }
             println!("date of birth format incorrect!");
-            
         };
 
         print!("Address: ");
         io::stdout().flush().unwrap();
-        io::stdin().read_line(&mut address).expect("could not read input");
+        io::stdin()
+            .read_line(&mut address)
+            .expect("could not read input");
         address = address.trim().to_string();
 
         //regex enforces xxx-xxx-xxxx format
-        let phone_number_regex = Regex::new(r"^(?:\d{3}-){2}\d{4}$|^\(\d{3}\)\s*\d{3}-\d{4}$").unwrap();
+        let phone_number_regex =
+            Regex::new(r"^(?:\d{3}-){2}\d{4}$|^\(\d{3}\)\s*\d{3}-\d{4}$").unwrap();
 
-        phone_number = loop{
+        phone_number = loop {
             print!("Enter phone number xxx-xxx-xxxx : ");
             io::stdout().flush().unwrap();
             let mut input = String::new();
@@ -212,13 +272,14 @@ impl Customer {
 
             //println!("{}",phone_number_in);
 
-            if phone_number_regex.is_match(&phone_number_in){
+            if phone_number_regex.is_match(&phone_number_in) {
                 break phone_number_in;
             }
             println!("Phone number format incorrect, please enter number again.");
         };
 
-        let email_regex = Regex::new(r"^([a-zA-Z0-9._%+-]+)@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})$").unwrap();
+        let email_regex =
+            Regex::new(r"^([a-zA-Z0-9._%+-]+)@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})$").unwrap();
 
         email = loop {
             print!("Enter email: ");
@@ -227,219 +288,247 @@ impl Customer {
             std::io::stdin().read_line(&mut input).unwrap();
             email = input.trim().to_string();
 
-            if email_regex.is_match(&email){
+            if email_regex.is_match(&email) {
                 break email;
-            }else{
+            } else {
                 println!("invalid email format, please enter email again.");
             }
         };
 
         //println!("{} and {}",phone_number, email);
 
-
         println!("Would you like to create a checking accouunt? y/n:");
 
         //consider turning into a function.
-        new_checking = loop{
+        new_checking = loop {
             let mut checking_decision = String::new();
-            std::io::stdin().read_line(&mut checking_decision).expect("Error reading input");
+            std::io::stdin()
+                .read_line(&mut checking_decision)
+                .expect("Error reading input");
 
             match checking_decision.trim() {
-                "y" =>{
+                "y" => {
                     println!("Creating new Checking account...");
 
-                    let new_checking_num = customer_arr.iter_mut().map(|customer| {
-                        let mut acct = customer.account;
-                        match &mut acct.checking() {
-                            Some(checking) => checking.account_num(),
-                            None => 1000,
-                        }
-                    }).max();
-                    
+                    let new_checking_num = customer_arr
+                        .iter_mut()
+                        .map(|customer| {
+                            let mut acct = customer.account;
+                            match &mut acct.checking() {
+                                Some(checking) => checking.account_num(),
+                                None => 1000,
+                            }
+                        })
+                        .max();
 
                     //println!("Your Checking account number will be: {:?}",new_checking_num.unwrap());
 
                     print!("Enter initial balance: ");
                     std::io::stdout().flush().unwrap();
-                    
+
                     let mut init_check_bal: f32 = 0.0;
 
                     loop {
                         let mut check_bal = String::new();
-                        std::io::stdin().read_line(&mut check_bal).expect("Error reading input");
+                        std::io::stdin()
+                            .read_line(&mut check_bal)
+                            .expect("Error reading input");
 
                         match check_bal.trim().parse::<f32>() {
                             Ok(bal) => {
-                                format!("{:.2}",bal);
+                                format!("{:.2}", bal);
                                 init_check_bal = bal;
                                 break;
-                            
-                            },
+                            }
                             Err(_) => {
                                 println!("invalid input")
-                            },
-                        
+                            }
                         }
                     }
 
-                let new_checking_account = checking::Checking::new(new_checking_num.unwrap()+1, None, init_check_bal);
+                    let new_checking_account = checking::Checking::new(
+                        new_checking_num.unwrap() + 1,
+                        None,
+                        init_check_bal,
+                    );
 
-                break Some(new_checking_account);
-            },
-            "n" =>{
-                println!("skipping creating Checking account");
-                break None;
-            },
-            _ => println!("Invalid input, please enter y or n"),
+                    break Some(new_checking_account);
+                }
+                "n" => {
+                    println!("skipping creating Checking account");
+                    break None;
+                }
+                _ => println!("Invalid input, please enter y or n"),
             }
         };
 
         println!("Would you like to create a savings accouunt? y/n:");
 
-
-        new_savings = loop{
+        new_savings = loop {
             let mut savings_decision = String::new();
-            std::io::stdin().read_line(&mut savings_decision).expect("Error reading input");
+            std::io::stdin()
+                .read_line(&mut savings_decision)
+                .expect("Error reading input");
 
             match savings_decision.trim() {
-                "y" =>{
+                "y" => {
                     println!("Creating new savings account...");
 
-                    let new_savings_num = customer_arr.iter_mut().map(|customer| {
-                        let mut acct = customer.account;
-                        match &mut acct.savings() {
-                            Some(savings) => savings.account_num(),
-                            None => 2000,
-                        }
-                    }).max();
-                    
+                    let new_savings_num = customer_arr
+                        .iter_mut()
+                        .map(|customer| {
+                            let mut acct = customer.account;
+                            match &mut acct.savings() {
+                                Some(savings) => savings.account_num(),
+                                None => 2000,
+                            }
+                        })
+                        .max();
 
                     //println!("Your savings account number will be: {:?}",new_savings_num.unwrap());
 
                     print!("Enter initial balance: ");
                     std::io::stdout().flush().unwrap();
-                    
+
                     let mut init_check_bal: f32 = 0.0;
 
                     loop {
                         let mut check_bal = String::new();
-                        std::io::stdin().read_line(&mut check_bal).expect("Error reading input");
+                        std::io::stdin()
+                            .read_line(&mut check_bal)
+                            .expect("Error reading input");
 
                         match check_bal.trim().parse::<f32>() {
                             Ok(bal) => {
-                                format!("{:.2}",bal);
+                                format!("{:.2}", bal);
                                 init_check_bal = bal;
                                 break;
-                            
-                            },
+                            }
                             Err(_) => {
                                 println!("invalid input")
-                            },
-                        
+                            }
                         }
                     }
 
-                let new_savings_account = savings::Savings::new(new_savings_num.unwrap()+1, None, init_check_bal);
+                    let new_savings_account =
+                        savings::Savings::new(new_savings_num.unwrap() + 1, None, init_check_bal);
 
-                break Some(new_savings_account);
-            },
-            "n" =>{
-                println!("skipping creating savings account");
-                break None;
-            },
-            _ => println!("Invalid input, please enter y or n"),
+                    break Some(new_savings_account);
+                }
+                "n" => {
+                    println!("skipping creating savings account");
+                    break None;
+                }
+                _ => println!("Invalid input, please enter y or n"),
             }
         };
 
         println!("Would you like to create a credit accouunt? y/n:");
 
-        new_credit = loop{
+        new_credit = loop {
             let mut credit_decision = String::new();
-            std::io::stdin().read_line(&mut credit_decision).expect("Error reading input");
+            std::io::stdin()
+                .read_line(&mut credit_decision)
+                .expect("Error reading input");
 
             match credit_decision.trim() {
-                "y" =>{
+                "y" => {
                     println!("Creating new credit account...");
 
-                    let new_credit_num = customer_arr.iter_mut().map(|customer| {
-                        let mut acct = customer.account;
-                        match &mut acct.credit() {
-                            Some(credit) => credit.account_num(),
-                            None => 3000,
-                        }
-                    }).max();
-                    
+                    let new_credit_num = customer_arr
+                        .iter_mut()
+                        .map(|customer| {
+                            let mut acct = customer.account;
+                            match &mut acct.credit() {
+                                Some(credit) => credit.account_num(),
+                                None => 3000,
+                            }
+                        })
+                        .max();
 
                     //println!("Your credit account number will be: {:?}",new_credit_num.unwrap());
 
                     print!("Enter initial balance: ");
                     std::io::stdout().flush().unwrap();
-                    
+
                     let mut init_check_bal: f32 = 0.0;
 
                     loop {
                         let mut check_bal = String::new();
-                        std::io::stdin().read_line(&mut check_bal).expect("Error reading input");
+                        std::io::stdin()
+                            .read_line(&mut check_bal)
+                            .expect("Error reading input");
 
                         match check_bal.trim().parse::<f32>() {
                             Ok(bal) => {
-                                format!("{:.2}",bal);
+                                format!("{:.2}", bal);
                                 init_check_bal = bal;
                                 break;
-                            
-                            },
+                            }
                             Err(_) => {
                                 println!("invalid input")
-                            },
-                        
+                            }
                         }
                     }
 
                     print!("Enter max credit amount: ");
                     std::io::stdout().flush().unwrap();
-                    
+
                     let mut max_credit: f32 = 0.0;
 
                     loop {
                         let mut cred_max = String::new();
-                        std::io::stdin().read_line(&mut cred_max).expect("Error reading input");
+                        std::io::stdin()
+                            .read_line(&mut cred_max)
+                            .expect("Error reading input");
 
                         match cred_max.trim().parse::<f32>() {
                             Ok(bal) => {
-                                format!("{:.2}",bal);
+                                format!("{:.2}", bal);
                                 max_credit = bal;
                                 break;
-                            
-                            },
+                            }
                             Err(_) => {
                                 println!("invalid input")
-                            },
-                        
+                            }
                         }
                     }
 
-                let new_credit_account = credit::Credit::new(new_credit_num.unwrap()+1, max_credit, None, init_check_bal);
+                    let new_credit_account = credit::Credit::new(
+                        new_credit_num.unwrap() + 1,
+                        max_credit,
+                        None,
+                        init_check_bal,
+                    );
 
-                break Some(new_credit_account);
-            },
-            "n" =>{
-                println!("skipping creating credit account");
-                break None;
-            },
-            _ => println!("Invalid input, please enter y or n"),
+                    break Some(new_credit_account);
+                }
+                "n" => {
+                    println!("skipping creating credit account");
+                    break None;
+                }
+                _ => println!("Invalid input, please enter y or n"),
             }
         };
 
-        let new_person = person::Person::new(first_name, last_name, date_of_birth, new_cust_id, address, phone_number, email);
-        
+        let new_person = person::Person::new(
+            first_name,
+            last_name,
+            date_of_birth,
+            new_cust_id,
+            address,
+            phone_number,
+            email,
+        );
+
         let new_account = account::Account::new(new_cust_id, new_checking, new_savings, new_credit);
 
-        let mut new_customer = customer::Customer::new(new_person, new_account, new_cust_id, password);
+        let mut new_customer =
+            customer::Customer::new(new_person, new_account, new_cust_id, password);
 
         new_customer.print_all_fields();
 
         customer_arr.push(new_customer);
-
     }
 
     pub fn print_all_fields(&mut self) {
@@ -453,24 +542,24 @@ impl Customer {
         println!("ID: {}", Self::customer_num(self));
         println!("Phone Number: {}", Self::person(self).phone_number());
         println!("Email: {}", Self::person(self).email());
-        println!("Password: {}", Self::password(&self));
+        println!("Password: {}", Self::password(self));
         println!(
             "Savings Account Number: {}",
-            match Self::account(self).savings(){
+            match Self::account(self).savings() {
                 Some(active_savings) => active_savings.account_num().to_string(),
                 None => "No account!".to_string(),
             }
         );
         println!(
             "Checking Account Number: {}",
-            match Self::account(self).checking(){
+            match Self::account(self).checking() {
                 Some(active_checking) => active_checking.account_num().to_string(),
                 None => "No account!".to_string(),
             }
         );
         println!(
             "Credit Account Number: {}",
-            match Self::account(self).credit(){
+            match Self::account(self).credit() {
                 Some(active_credit) => active_credit.account_num().to_string(),
                 None => "No account!".to_string(),
             }
@@ -478,26 +567,25 @@ impl Customer {
     }
 
     pub fn print_all_balances(&mut self) {
-
         println!("Printing all account balances...");
 
         println!(
             "Savings Account bal: ${}",
-            match Self::account(self).savings(){
+            match Self::account(self).savings() {
                 Some(active_savings) => active_savings.balance().to_string(),
                 None => "No account!".to_string(),
             }
         );
         println!(
             "Checking Account bal: ${}",
-            match Self::account(self).checking(){
+            match Self::account(self).checking() {
                 Some(active_checking) => active_checking.balance().to_string(),
                 None => "No account!".to_string(),
             }
         );
         println!(
             "Credit Account bal: ${}",
-            match Self::account(self).credit(){
+            match Self::account(self).credit() {
                 Some(active_credit) => active_credit.balance().to_string(),
                 None => "No account!".to_string(),
             }

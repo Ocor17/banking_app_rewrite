@@ -15,14 +15,12 @@ impl Credit {
         let starting_balance = starting_balance.unwrap_or(balance);
 
         Credit {
-
-            account_num: account_num,
-            max_credit: max_credit,
+            account_num,
+            max_credit,
             starting_balance: Some(starting_balance),
-            balance: balance,
+            balance,
         }
     }
-
 
     pub fn account_num(&self) -> i64 {
         self.account_num
@@ -42,7 +40,7 @@ impl Credit {
 
     //we're making the choice to not have a starting balance be overwritable
     pub fn set_starting_balance(&mut self, starting_balance: f32) {
-        if self.starting_balance == None {
+        if self.starting_balance.is_none() {
             self.starting_balance = Some(starting_balance);
         }
     }
