@@ -1,0 +1,3 @@
+Savings Account Number,Last Name,Identification Number,Date of Birth,Checking Account Number,Credit Account Number,Phone Number,Checking Starting Balance,Savings Starting Balance,Password,Credit Starting Balance,Address,First Name,Email,Credit Max
+2001,Smith,101,01/15/1985,1001,3001,555-0101,1000.00,2000.00,pass123,50.00,123 Oak St,John,john.s@example.com,5000.00
+2002,Doe,102,03/20/1990,1002,3002,555-0102,1500.50,2500.75,securePwd,75.25,456 Pine Ave,Jane,jane.d@example.net,7500.00

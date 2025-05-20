@@ -90,14 +90,8 @@ impl Customer {
     }
 
     //currently takes some time to run this function, most likely due to how argon2 works
-    pub fn csv_to_customer_arr() -> Result<Vec<Customer>, Box<dyn Error>> {
-        let mut input = String::new();
-        println!("Input csv filename:");
-        io::stdin().read_line(&mut input)?;
-
-        let path = Path::new(input.trim());
-
-        let file = File::open(path)?;
+    pub fn csv_to_customer_arr_from_path(file_path: &Path) -> Result<Vec<Customer>, Box<dyn Error>> {
+        let file = File::open(file_path)?;
 
         //expected headers:
         //Savings Account Number[0],Last Name[1],Identification Number[2],
@@ -123,26 +117,26 @@ impl Customer {
                 record[12].to_string(),
                 record[1].to_string(),
                 record[3].to_string(),
-                record[2].parse().unwrap(),
+                record[2].parse()?, // Use ? for error propagation
                 record[11].to_string(),
                 record[6].to_string(),
                 record[13].to_string(),
             );
             let checking = checking::Checking::new(
-                record[4].parse().unwrap(),
+                record[4].parse()?, // Use ?
                 None,
-                record[7].parse().unwrap(),
+                record[7].parse()?, // Use ?
             );
             let savings =
-                savings::Savings::new(record[0].parse().unwrap(), None, record[8].parse().unwrap());
+                savings::Savings::new(record[0].parse()?, None, record[8].parse()?); // Use ?
             let credit = credit::Credit::new(
-                record[5].parse().unwrap(),
-                record[14].parse().unwrap(),
+                record[5].parse()?, // Use ?
+                record[14].parse()?, // Use ?
                 None,
-                record[10].parse().unwrap(),
+                record[10].parse()?, // Use ?
             );
             let account = account::Account::new(
-                record[2].parse().unwrap(),
+                record[2].parse()?, // Use ?
                 Some(checking),
                 Some(savings),
                 Some(credit),
@@ -150,7 +144,7 @@ impl Customer {
             let customer = Customer::new(
                 person,
                 account,
-                record[2].parse().unwrap(),
+                record[2].parse()?, // Use ?
                 record[9].to_string(),
             );
 
@@ -171,6 +165,14 @@ impl Customer {
         });
 
         Ok(customer_arr)
+    }
+
+    pub fn csv_to_customer_arr() -> Result<Vec<Customer>, Box<dyn Error>> {
+        let mut input = String::new();
+        println!("Input csv filename:");
+        io::stdin().read_line(&mut input)?;
+        let path = Path::new(input.trim());
+        Self::csv_to_customer_arr_from_path(path)
     }
 
     //function to be called to manually created a new customer
@@ -595,3 +597,119 @@ impl Customer {
 
 //csv contents:
 // Savings acct num, Last name, ID num, DOB, Checking acct Num, Credit acct Num, P#, Checking start bal, saving start bal, pass, credit start bal, address, First Name, Email, Credit max
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::account::Account;
+    use crate::person::Person;
+    use std::path::Path;
+
+    fn create_test_person() -> Person {
+        Person::new(
+            "Test".to_string(),
+            "User".to_string(),
+            "01/01/2000".to_string(),
+            999,
+            "1 Test Lane".to_string(),
+            "555-TEST".to_string(),
+            "test@example.com".to_string(),
+        )
+    }
+
+    fn create_test_account() -> Account {
+        Account::new(999, None, None, None)
+    }
+
+    #[test]
+    fn test_new_customer() {
+        let person = create_test_person();
+        let account = create_test_account();
+        let mut customer = Customer::new(person.clone(), account.clone(), 777, "password123".to_string());
+
+        assert_eq!(customer.customer_num(), 777);
+        assert_eq!(customer.person().first_name(), "Test"); // Check a field from Person
+        assert_eq!(customer.account().account_num(), 999); // Check a field from Account
+    }
+
+    #[test]
+    fn test_set_customer_num() {
+        let mut customer = Customer::new(create_test_person(), create_test_account(), 777, "pw".to_string());
+        customer.set_customer_num(888);
+        assert_eq!(customer.customer_num(), 888);
+    }
+
+    #[test]
+    fn test_set_person() {
+        let mut customer = Customer::new(create_test_person(), create_test_account(), 777, "pw".to_string());
+        let mut new_person = create_test_person();
+        new_person.set_first_name("Updated".to_string());
+        customer.set_person(new_person.clone());
+        assert_eq!(customer.person().first_name(), "Updated");
+    }
+
+    #[test]
+    fn test_set_account() {
+        let mut customer = Customer::new(create_test_person(), create_test_account(), 777, "pw".to_string());
+        let mut new_account = create_test_account();
+        new_account.set_account_num(1001);
+        customer.set_account(new_account.clone());
+        assert_eq!(customer.account().account_num(), 1001);
+    }
+
+    #[test]
+    fn test_password_hashing_and_verify() {
+        let sample_password = "securePassword!";
+        // Hashing is done in Customer::new or set_password
+        let customer = Customer::new(create_test_person(), create_test_account(), 777, sample_password.to_string());
+
+        assert!(customer.password_verify(sample_password));
+        assert!(!customer.password_verify("wrongPassword"));
+    }
+
+    #[test]
+    fn test_set_password() {
+        let mut customer = Customer::new(create_test_person(), create_test_account(), 777, "oldPassword".to_string());
+        
+        let new_password = "newSecurePassword123";
+        customer.set_password(new_password.to_string());
+
+        assert!(customer.password_verify(new_password));
+        assert!(!customer.password_verify("oldPassword"));
+    }
+
+    #[test]
+    fn test_csv_to_customer_arr_success() {
+        let path = Path::new("src/test_data/mock_customers.csv");
+        let result = Customer::csv_to_customer_arr_from_path(path);
+        
+        assert!(result.is_ok());
+        let mut customers = result.unwrap(); // Make customers mutable
+        assert_eq!(customers.len(), 2);
+
+        // Check some data from the first customer (Smith)
+        // Use iter_mut() to get a mutable reference if needed by person() or account()
+        let smith = customers.iter_mut().find(|c| c.customer_num() == 101).unwrap();
+        assert_eq!(smith.person().first_name(), "John");
+        assert_eq!(smith.person().last_name(), "Smith");
+        assert!(smith.account().checking().is_some());
+        assert_eq!(smith.account().checking().as_ref().unwrap().balance(), 1000.00);
+        assert_eq!(smith.account().savings().as_ref().unwrap().balance(), 2000.00);
+        assert_eq!(smith.account().credit().as_ref().unwrap().balance(), 50.00);
+         assert!(smith.password_verify("pass123"));
+    }
+
+    #[test]
+    fn test_csv_to_customer_arr_file_not_found() {
+        let path = Path::new("src/test_data/non_existent_file.csv");
+        let result = Customer::csv_to_customer_arr_from_path(path);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_csv_to_customer_arr_malformed_data() {
+        let path = Path::new("src/test_data/mock_customers_malformed.csv");
+        let result = Customer::csv_to_customer_arr_from_path(path);
+        assert!(result.is_err()); // Expecting an error due to "NOT_A_FLOAT"
+    }
+}
