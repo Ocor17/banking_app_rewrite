@@ -87,3 +87,78 @@ impl Person {
         self.email = email
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new_person_and_getters() {
+        let person = Person::new(
+            "John".to_string(),
+            "Doe".to_string(),
+            "1990-01-01".to_string(),
+            1234567890,
+            "123 Main St, Anytown, USA".to_string(),
+            "555-123-4567".to_string(),
+            "john.doe@example.com".to_string(),
+        );
+
+        assert_eq!(person.first_name(), "John");
+        assert_eq!(person.last_name(), "Doe");
+        assert_eq!(person.date_of_birth(), "1990-01-01");
+        assert_eq!(person.identification_number(), 1234567890);
+        assert_eq!(person.address(), "123 Main St, Anytown, USA");
+        assert_eq!(person.phone_number(), "555-123-4567");
+        assert_eq!(person.email(), "john.doe@example.com");
+    }
+
+    #[test]
+    fn test_set_first_name() {
+        let mut person = Person::default();
+        person.set_first_name("Jane".to_string());
+        assert_eq!(person.first_name(), "Jane");
+    }
+
+    #[test]
+    fn test_set_last_name() {
+        let mut person = Person::default();
+        person.set_last_name("Doe".to_string());
+        assert_eq!(person.last_name(), "Doe");
+    }
+
+    #[test]
+    fn test_set_date_of_birth() {
+        let mut person = Person::default();
+        person.set_date_of_birth("2000-12-31".to_string());
+        assert_eq!(person.date_of_birth(), "2000-12-31");
+    }
+
+    #[test]
+    fn test_set_identification_number() {
+        let mut person = Person::default();
+        person.set_identification_number(9876543210);
+        assert_eq!(person.identification_number(), 9876543210);
+    }
+
+    #[test]
+    fn test_set_address() {
+        let mut person = Person::default();
+        person.set_address("456 Oak Ave, Otherville, USA".to_string());
+        assert_eq!(person.address(), "456 Oak Ave, Otherville, USA");
+    }
+
+    #[test]
+    fn test_set_phone_number() {
+        let mut person = Person::default();
+        person.set_phone_number("555-987-6543".to_string());
+        assert_eq!(person.phone_number(), "555-987-6543");
+    }
+
+    #[test]
+    fn test_set_email() {
+        let mut person = Person::default();
+        person.set_email("jane.doe@example.com".to_string());
+        assert_eq!(person.email(), "jane.doe@example.com");
+    }
+}
